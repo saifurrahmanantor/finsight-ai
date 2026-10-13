@@ -296,6 +296,47 @@ selected_name = {
 
 selected = scenario_results[selected_name]
 
+# --- Decision Recommendation Engine ---
+
+st.subheader(" FinSight Recommendation")
+
+# Lower risk is better; use final balance as a tie-breaker.
+ranked_scenarios = sorted(
+    scenario_results.items(),
+    key=lambda item: (
+        item[1]["shortfall_probability"],
+        -item[1]["average_final_balance"]
+    )
+)
+
+best_name, best_result = ranked_scenarios[0]
+
+st.write(
+    f"Based on your current assumptions, **{best_name}** "
+    f"has the lowest estimated probability of falling below "
+    f"your minimum reserve."
+)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(
+        "Recommended option",
+        best_name
+    )
+
+with col2:
+    st.metric(
+        "Estimated shortfall risk",
+        f"{best_result['shortfall_probability']:.1%}"
+    )
+
+st.caption(
+    "This recommendation compares only the modeled scenarios. "
+    "It is not a guarantee; review the fee deadline, essential expenses, "
+    "and your actual financial needs before deciding."
+)
+
 st.markdown("### Your selected scenario")
 
 col1, col2, col3 = st.columns(3)

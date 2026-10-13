@@ -316,9 +316,4 @@ st.caption(
     "but do not establish real-world financial risk. "
     "Risk categories are preliminary design thresholds."
 )
-for name, phone_week in scenarios.items():
-    # simulation calculations
-    ...
-    scenario_results[name] = {
-        # calculated results
-    }
+

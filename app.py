@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("💰 FinSight AI")
+st.title("FinSight AI")
 st.subheader("Financial decision assistant for university students")
 st.caption("Plan your spending. Understand your financial risk.")
 
@@ -140,13 +140,28 @@ elif shortfall_probability >= 0.10:
 else:
     st.success("Lower modeled risk — keep an emergency reserve.")
 
+
 st.markdown("### Possible balances after 8 weeks")
 
-chart_data = pd.DataFrame({
-    "Final balance (BDT)": final_balances
-})
+import matplotlib.pyplot as plt
 
-st.hist_chart(chart_data, x="Final balance (BDT)")
+fig, ax = plt.subplots(figsize=(10, 4))
+
+ax.hist(final_balances, bins=40)
+ax.axvline(
+    minimum_reserve,
+    linestyle="--",
+    label="Minimum safety reserve"
+)
+
+ax.set_xlabel("Final balance (BDT)")
+ax.set_ylabel("Number of simulations")
+ax.set_title("Distribution of possible balances")
+ax.legend()
+
+st.pyplot(fig)
+plt.close(fig)
+
 
 st.markdown("### What does this mean?")
 st.write(

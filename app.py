@@ -94,16 +94,16 @@ semester_fee = st.sidebar.number_input(
     step=1000
 )
 
-phone_cost = st.sidebar.number_input(
-    "Phone cost (BDT)",
+cost = st.sidebar.number_input(
+    "Cost of things you want to buy (BDT)",
     min_value=0,
     value=20000,
     step=500
 )
 
 purchase_choice = st.sidebar.selectbox(
-    "When are you considering buying the phone?",
-    ["Do not buy", "Buy now (Week 1)", "Buy later (Week 4)"]
+    "When are you consider to buy?",
+    ["Do not buy", "Buy now", "Buy later"]
 )
 
 minimum_reserve = st.sidebar.number_input(

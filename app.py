@@ -218,7 +218,7 @@ for scenario_name, phone_week in purchase_weeks.items():
         affordability_probability = np.nan
     else:
         projected_after_purchase = (
-            pre_purchase_balances - phone_cost
+            pre_purchase_balances - cost
         )
 
         if phone_week < FEE_WEEK:
@@ -322,11 +322,11 @@ assert comparison["Decision"].is_unique
 
 assert comparison["Shortfall Risk (%)"].between(0, 100).all()
 
-assert abs((no_buy_avg - buy_now_avg) - phone_cost) < 0.01
-assert abs((no_buy_avg - buy_later_avg) - phone_cost) < 0.01
+assert abs((no_buy_avg - buy_now_avg) - cost) < 0.01
+assert abs((no_buy_avg - buy_later_avg) - cost) < 0.01
 
 with st.expander("Model validation"):
-    st.write("Expected phone-cost difference:", f"৳{phone_cost:,.0f}")
+    st.write("Expected phone-cost difference:", f"৳{cost:,.0f}")
     st.write("Buy-now balance difference:", f"৳{no_buy_avg - buy_now_avg:,.2f}")
     st.write("Buy-later balance difference:", f"৳{no_buy_avg - buy_later_avg:,.2f}")
     st.success("Phone-cost validation tests passed.")

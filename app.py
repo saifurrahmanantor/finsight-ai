@@ -54,7 +54,7 @@ st.markdown("""
 
 
 # =========================================================
-# 2. USER INPUTS
+# 2. SIDEBAR INPUTS
 # =========================================================
 
 st.sidebar.header("Your Financial Information")
@@ -113,17 +113,17 @@ minimum_reserve = st.sidebar.number_input(
     step=500
 )
 
-
-# =========================================================
-# 3. VALIDATE INPUTS
-# =========================================================
-
 if income_min > income_max:
     st.error("Maximum monthly income must be at least minimum monthly income.")
     st.stop()
 
-fee_week = 6
+
+# =========================================================
+# 3. MODEL SETTINGS
+# =========================================================
+
 weeks = 8
+fee_week = 6
 simulations = 10000
 
 phone_week = {
@@ -137,15 +137,14 @@ phone_week = {
 # 4. MONTE CARLO SIMULATION
 # =========================================================
 
-# A fixed seed makes results reproducible for the same inputs.
+# Reproducible random conditions.
+# Every decision uses the same random income and expenses.
 rng = np.random.default_rng(42)
 
 weekly_income_min = income_min * 12 / 52
 weekly_income_max = income_max * 12 / 52
 weekly_expenses = expenses * 12 / 52
 
-# Generate the same random income and unexpected expenses
-# for all three scenarios, making comparisons fairer.
 income_draws = rng.uniform(
     weekly_income_min,
     weekly_income_max,
@@ -177,30 +176,28 @@ for scenario_name, scenario_phone_week in scenarios.items():
 
     for week in range(1, weeks + 1):
 
-        # Add income and subtract essential and unexpected expenses.
+        # Weekly income minus essential and unexpected expenses.
         path_balances += (
             income_draws[:, week - 1]
             - weekly_expenses
             - unexpected_draws[:, week - 1]
         )
 
-        # Pay semester fee in Week 6.
+        # Semester fee payment.
         if week == fee_week:
             path_balances -= semester_fee
 
-        # Subtract phone cost in the selected purchase week.
+        # Phone purchase.
         if week == scenario_phone_week:
             path_balances -= phone_cost
 
         history.append(path_balances.copy())
 
     history = np.array(history).T
-
     final_balances = history[:, -1]
-    fee_week_balances = history[:, fee_week - 1]
+    fee_balances = history[:, fee_week - 1]
 
-    # A shortfall occurs if the balance falls below the
-    # minimum reserve at any point during the 8-week period.
+    # Shortfall = reserve breached at any point in the forecast.
     shortfall_probability = np.any(
         history < minimum_reserve,
         axis=1
@@ -213,18 +210,18 @@ for scenario_name, scenario_phone_week in scenarios.items():
         "average_final_balance": final_balances.mean(),
         "median_final_balance": np.median(final_balances),
         "p05_balance": np.percentile(final_balances, 5),
-        "average_balance_after_fee": fee_week_balances.mean(),
+        "average_balance_after_fee": fee_balances.mean(),
         "reserve_after_fee_probability": np.mean(
-            fee_week_balances >= minimum_reserve
+            fee_balances >= minimum_reserve
         )
     }
 
 
 # =========================================================
-# 5. COMPARE ALL THREE DECISIONS
+# 5. DECISION COMPARISON TABLE
 # =========================================================
 
-st.markdown("### Compare your financial decisions")
+st.markdown("## Compare Your Financial Decisions")
 
 rows = []
 
@@ -270,7 +267,7 @@ st.dataframe(
 # 6. MODEL VALIDATION
 # =========================================================
 
-st.markdown("### Model validation")
+st.markdown("## Model Validation")
 
 no_buy_avg = scenario_results["Do not buy"]["average_final_balance"]
 buy_now_avg = scenario_results["Buy now (Week 1)"]["average_final_balance"]
@@ -279,12 +276,19 @@ buy_later_avg = scenario_results["Buy later (Week 4)"]["average_final_balance"]
 buy_now_difference = no_buy_avg - buy_now_avg
 buy_later_difference = no_buy_avg - buy_later_avg
 
-st.write("Expected phone-cost difference:", f"৳{phone_cost:,.0f}")
-st.write("Observed buy-now difference:", f"৳{buy_now_difference:,.2f}")
-st.write("Observed buy-later difference:", f"৳{buy_later_difference:,.2f}")
+col1, col2 = st.columns(2)
 
-# Buying a phone in either scenario must reduce the Week 8
-# balance by exactly the phone cost, given shared random draws.
+col1.metric(
+    "Buy-now balance difference",
+    f"৳{buy_now_difference:,.2f}"
+)
+
+col2.metric(
+    "Buy-later balance difference",
+    f"৳{buy_later_difference:,.2f}"
+)
+
+# The phone cost must explain the final-balance difference.
 assert len(comparison) == 3
 assert comparison["Decision"].is_unique
 assert comparison["Shortfall Risk (%)"].between(0, 100).all()
@@ -305,25 +309,24 @@ selected_name = {
     "Week 4": "Buy later (Week 4)"
 }[purchase_week]
 
-# Use the same results dictionary for every displayed metric.
 selected = scenario_results[selected_name]
 
-st.markdown("### Your selected scenario")
+st.markdown("## Your Selected Scenario")
 
 col1, col2, col3 = st.columns(3)
 
 col1.metric(
-    "Shortfall probability",
+    "Shortfall Probability",
     f"{selected['shortfall_probability']:.1%}"
 )
 
 col2.metric(
-    "Average final balance",
+    "Average Final Balance",
     f"৳{selected['average_final_balance']:,.0f}"
 )
 
 col3.metric(
-    "5th percentile balance",
+    "5th Percentile Balance",
     f"৳{selected['p05_balance']:,.0f}"
 )
 
@@ -341,9 +344,10 @@ else:
 # 8. RECOMMENDATION ENGINE
 # =========================================================
 
-st.markdown("### FinSight Recommendation")
+st.markdown("## FinSight Recommendation")
 
-# Rank by lowest shortfall risk, then highest average final balance.
+# Lowest shortfall risk wins.
+# If risks tie, prefer the highest average final balance.
 ranked_scenarios = sorted(
     scenario_results.items(),
     key=lambda item: (
@@ -356,27 +360,25 @@ best_name, best_result = ranked_scenarios[0]
 
 col1, col2 = st.columns(2)
 
-with col1:
-    st.metric(
-        "Recommended option",
-        best_name
-    )
+col1.metric(
+    "Recommended Option",
+    best_name
+)
 
-with col2:
-    st.metric(
-        "Estimated shortfall risk",
-        f"{best_result['shortfall_probability']:.1%}"
-    )
+col2.metric(
+    "Estimated Shortfall Risk",
+    f"{best_result['shortfall_probability']:.1%}"
+)
 
 st.write(
     f"Based on the current assumptions, **{best_name}** "
-    "has the lowest estimated shortfall risk. If multiple options "
-    "have the same risk, the model prefers the higher average final balance."
+    "has the lowest estimated shortfall risk. If risk is equal, "
+    "the model prefers the option with the higher average final balance."
 )
 
 st.caption(
-    "This recommendation compares only the modeled scenarios. "
-    "It does not account for every personal need or the urgency of replacing a phone."
+    "The recommendation compares only the modeled scenarios. "
+    "It does not account for every personal need or phone-replacement urgency."
 )
 
 
@@ -384,7 +386,7 @@ st.caption(
 # 9. SHORTFALL RISK CHART
 # =========================================================
 
-st.markdown("### Shortfall risk by decision")
+st.markdown("## Shortfall Risk by Decision")
 
 risk_chart = comparison.set_index("Decision")["Shortfall Risk (%)"]
 
@@ -392,10 +394,36 @@ st.bar_chart(risk_chart)
 
 
 # =========================================================
-# 10. FINAL BALANCE DISTRIBUTION
+# 10. WEEK-BY-WEEK CASH-FLOW TRAJECTORY
 # =========================================================
 
-st.markdown("### Possible balances after 8 weeks")
+st.markdown("## 8-Week Cash-Flow Trajectory")
+
+selected_history = selected["history"]
+
+weekly_median = np.median(selected_history, axis=0)
+weekly_p05 = np.percentile(selected_history, 5, axis=0)
+weekly_p95 = np.percentile(selected_history, 95, axis=0)
+
+cashflow_df = pd.DataFrame({
+    "Median balance (BDT)": weekly_median,
+    "5th percentile (BDT)": weekly_p05,
+    "95th percentile (BDT)": weekly_p95
+}, index=[f"Week {i}" for i in range(1, weeks + 1)])
+
+st.line_chart(cashflow_df)
+
+st.caption(
+    "Median balance represents the middle simulated outcome. "
+    "The 5th percentile represents a downside outcome, not the absolute worst case."
+)
+
+
+# =========================================================
+# 11. FINAL BALANCE DISTRIBUTION
+# =========================================================
+
+st.markdown("## Possible Balances After 8 Weeks")
 
 fig, ax = plt.subplots(figsize=(10, 4))
 
@@ -422,59 +450,16 @@ st.pyplot(fig)
 plt.close(fig)
 
 
-# =========================================================
-# 11. DEBUG TABLE — TEMPORARY
-# =========================================================
-
-with st.expander("Debug — Inspect inputs and simulation results"):
-
-    st.write("Current inputs:")
-
-    st.write({
-        "Current balance": balance,
-        "Minimum monthly income": income_min,
-        "Maximum monthly income": income_max,
-        "Monthly expenses": expenses,
-        "Semester fee": semester_fee,
-        "Phone cost": phone_cost,
-        "Minimum reserve": minimum_reserve,
-        "Selected scenario": selected_name
-    })
-
-    debug_rows = []
-
-    for name, result in scenario_results.items():
-        debug_rows.append({
-            "Scenario": name,
-            "Shortfall risk (%)": round(
-                result["shortfall_probability"] * 100, 2
-            ),
-            "Average final balance (BDT)": round(
-                result["average_final_balance"], 2
-            ),
-            "Minimum simulated balance (BDT)": round(
-                result["history"].min(), 2
-            ),
-            "5th percentile final balance (BDT)": round(
-                result["p05_balance"], 2
-            )
-        })
-
-    st.dataframe(
-        pd.DataFrame(debug_rows),
-        use_container_width=True,
-        hide_index=True
-    )
 
 
 # =========================================================
-# 12. DISCLAIMER
+# 13. DISCLAIMER
 # =========================================================
 
 st.caption(
     "FinSight AI is a prototype. Results depend on illustrative assumptions "
     "and are not empirical estimates of real-world financial risk. "
-    "The current model assumes uniform income within the selected range, "
-    "a 15% weekly chance of an unexpected expense, and a fixed semester-fee "
-    "payment in Week 6. Risk thresholds are preliminary."
+    "The model assumes uniform income within the selected range, a 15% weekly "
+    "chance of an unexpected expense, and a semester-fee payment in Week 6. "
+    "Risk categories are preliminary."
 )

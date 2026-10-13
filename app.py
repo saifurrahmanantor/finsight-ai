@@ -167,6 +167,37 @@ for name, result in scenario_results.items():
     })
 
 comparison = pd.DataFrame(rows)
+
+# Basic validation checks
+assert len(comparison) == 3
+assert comparison["Decision"].is_unique
+assert comparison["Shortfall Risk (%)"].between(0, 100).all()
+
+# Buying later or now should cost the same amount by Week 8
+no_buy_avg = scenario_results["Do not buy"][
+    "average_final_balance"
+]
+buy_now_avg = scenario_results["Buy now (Week 1)"][
+    "average_final_balance"
+]
+buy_later_avg = scenario_results["Buy later (Week 4)"][
+    "average_final_balance"
+]
+
+print("Decision count:", len(comparison))
+print("No-buy average:", round(no_buy_avg, 2))
+print("Buy-now average:", round(buy_now_avg, 2))
+print("Buy-later average:", round(buy_later_avg, 2))
+
+print(
+    "Buy-now balance difference:",
+    round(no_buy_avg - buy_now_avg, 2)
+)
+print(
+    "Buy-later balance difference:",
+    round(no_buy_avg - buy_later_avg, 2)
+)
+
 st.dataframe(comparison, use_container_width=True, hide_index=True)
 
 # Selected scenario

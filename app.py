@@ -72,107 +72,178 @@ phone_week = {
     "Week 4": 4
 }[purchase_week]
 
-# Monte Carlo engine
+
+# Monte Carlo engine: fair scenario comparison
 rng = np.random.default_rng(42)
 
 weekly_income_min = income_min * 12 / 52
 weekly_income_max = income_max * 12 / 52
 weekly_expenses = expenses * 12 / 52
 
-balances = np.full(simulations, float(balance))
-history = []
+# Generate the same random conditions for every decision
+income_draws = rng.uniform(
+    weekly_income_min,
+    weekly_income_max,
+    size=(simulations, weeks)
+)
 
-for week in range(1, weeks + 1):
-    income = rng.uniform(
-        weekly_income_min,
-        weekly_income_max,
-        simulations
+unexpected_draws = np.where(
+    rng.random((simulations, weeks)) < 0.15,
+    rng.uniform(500, 2500, size=(simulations, weeks)),
+    0
+)
+
+scenarios = {
+    "Do not buy": None,
+    "Buy now (Week 1)": 1,
+    "Buy later (Week 4)": 4
+}
+
+scenario_results = {}
+
+for scenario_name, phone_week in scenarios.items():
+    path_balances = np.full(
+        simulations, float(balance)
     )
+    history = []
 
-    unexpected = np.where(
-        rng.random(simulations) < 0.15,
-        rng.uniform(500, 2500, simulations),
-        0
-    )
+    for week in range(1, weeks + 1):
+        path_balances += (
+            income_draws[:, week - 1]
+            - weekly_expenses
+            - unexpected_draws[:, week - 1]
+        )
 
-    balances += income - weekly_expenses - unexpected
+        if week == fee_week:
+            path_balances -= semester_fee
 
-    if week == fee_week:
-        balances -= semester_fee
+        if week == phone_week:
+            path_balances -= phone_cost
 
-    if week == phone_week:
-        balances -= phone_cost
+        history.append(path_balances.copy())
 
-    history.append(balances.copy())
+    history = np.array(history).T
+    final_balances = history[:, -1]
 
-history = np.array(history).T
-final_balances = history[:, -1]
+    # Risk means reserve breached at any point
+    shortfall_probability = np.any(
+        history < minimum_reserve, axis=1
+    ).mean()
 
-shortfall_probability = np.any(
-    history < minimum_reserve, axis=1
-).mean()
+    scenario_results[scenario_name] = {
+        "history": history,
+        "final_balances": final_balances,
+        "shortfall_probability": shortfall_probability,
+        "average_final_balance": final_balances.mean(),
+        "median_final_balance": np.median(final_balances),
+        "p05_balance": np.percentile(final_balances, 5)
+    }
 
-avg_balance = final_balances.mean()
-p05_balance = np.percentile(final_balances, 5)
+# Show all three decisions
+st.markdown("### Compare your financial decisions")
 
-# Dashboard
-st.markdown("### Your financial outlook")
+rows = []
+
+for name, result in scenario_results.items():
+    risk = result["shortfall_probability"]
+
+    if risk >= 0.30:
+        risk_label = "High"
+    elif risk >= 0.10:
+        risk_label = "Moderate"
+    else:
+        risk_label = "Lower"
+
+    rows.append({
+        "Decision": name,
+        "Shortfall Risk (%)": round(risk * 100, 2),
+        "Average Final Balance (BDT)": round(
+            result["average_final_balance"], 0
+        ),
+        "5th Percentile Balance (BDT)": round(
+            result["p05_balance"], 0
+        ),
+        "Risk Category": risk_label
+    })
+
+comparison = pd.DataFrame(rows)
+st.dataframe(comparison, use_container_width=True, hide_index=True)
+
+# Selected scenario
+selected_name = {
+    None: "Do not buy",
+    1: "Buy now (Week 1)",
+    4: "Buy later (Week 4)"
+}[phone_week]
+
+selected = scenario_results[selected_name]
+
+st.markdown("### Your selected scenario")
 
 col1, col2, col3 = st.columns(3)
 
 col1.metric(
     "Shortfall probability",
-    f"{shortfall_probability:.1%}"
+    f"{selected['shortfall_probability']:.1%}"
 )
 
 col2.metric(
     "Average final balance",
-    f"৳{avg_balance:,.0f}"
+    f"৳{selected['average_final_balance']:,.0f}"
 )
 
 col3.metric(
     "5th percentile balance",
-    f"৳{p05_balance:,.0f}"
+    f"৳{selected['p05_balance']:,.0f}"
 )
 
-if shortfall_probability >= 0.30:
-    st.error("High modeled risk — review your spending decision.")
-elif shortfall_probability >= 0.10:
-    st.warning("Moderate modeled risk — protect your safety reserve.")
-else:
-    st.success("Lower modeled risk — keep an emergency reserve.")
+risk = selected["shortfall_probability"]
 
+if risk >= 0.30:
+    st.error("High modeled risk. Review your spending plan.")
+elif risk >= 0.10:
+    st.warning("Moderate modeled risk. Consider protecting your reserve.")
+else:
+    st.success("Lower modeled risk under the current assumptions.")
+
+# Visual comparison
+st.markdown("### Shortfall risk by decision")
+
+risk_chart = comparison.set_index("Decision")[
+    "Shortfall Risk (%)"
+]
+st.bar_chart(risk_chart)
 
 st.markdown("### Possible balances after 8 weeks")
 
-
 fig, ax = plt.subplots(figsize=(10, 4))
 
-ax.hist(final_balances, bins=40)
+for name, result in scenario_results.items():
+    ax.hist(
+        result["final_balances"],
+        bins=40,
+        alpha=0.35,
+        label=name
+    )
+
 ax.axvline(
     minimum_reserve,
     linestyle="--",
-    label="Minimum safety reserve"
+    label="Minimum reserve"
 )
 
 ax.set_xlabel("Final balance (BDT)")
 ax.set_ylabel("Number of simulations")
-ax.set_title("Distribution of possible balances")
 ax.legend()
+fig.tight_layout()
 
 st.pyplot(fig)
 plt.close(fig)
 
-
-st.markdown("### What does this mean?")
-st.write(
-    f"In this scenario, approximately "
-    f"{shortfall_probability:.1%} of simulated paths "
-    f"fell below your chosen safety reserve at least once."
-)
-
 st.caption(
-    "Prototype only. Income variability and unexpected-expense "
-    "assumptions are illustrative, not calibrated to survey data. "
-    "Results are estimates, not financial guarantees."
+    "Prototype estimates use illustrative assumptions. "
+    "Shared random scenarios make the comparison fairer, "
+    "but do not establish real-world financial risk. "
+    "Risk categories are preliminary design thresholds."
 )
+

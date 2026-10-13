@@ -2,6 +2,8 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
 
 st.set_page_config(
     page_title="FinSight AI",
@@ -143,7 +145,6 @@ else:
 
 st.markdown("### Possible balances after 8 weeks")
 
-import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(figsize=(10, 4))
 

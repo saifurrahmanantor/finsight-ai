@@ -131,13 +131,20 @@ for scenario_name, phone_week in scenarios.items():
         history < minimum_reserve, axis=1
     ).mean()
 
+  
+    fee_week_balances = history[:, fee_week - 1]
+
     scenario_results[scenario_name] = {
         "history": history,
         "final_balances": final_balances,
         "shortfall_probability": shortfall_probability,
         "average_final_balance": final_balances.mean(),
         "median_final_balance": np.median(final_balances),
-        "p05_balance": np.percentile(final_balances, 5)
+        "p05_balance": np.percentile(final_balances, 5),
+        "average_balance_after_fee": fee_week_balances.mean(),
+        "reserve_after_fee_probability": np.mean(
+            fee_week_balances >= minimum_reserve
+        )
     }
 
 # Show all three decisions
@@ -164,6 +171,14 @@ for name, result in scenario_results.items():
         "5th Percentile Balance (BDT)": round(
             result["p05_balance"], 0
         ),
+        
+        "Average Balance After Fee (BDT)": round(
+            result["average_balance_after_fee"], 0
+        ),
+        "Reserve After Fee (%)": round(
+            result["reserve_after_fee_probability"] * 100, 2
+        ),
+
         "Risk Category": risk_label
     })
 

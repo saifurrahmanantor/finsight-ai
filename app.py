@@ -6,15 +6,48 @@ import matplotlib.pyplot as plt
 
 
 st.set_page_config(
-    page_title="FinSight AI",
+    page_title="FinSight AI | Financial Resilience",
     page_icon="💰",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.title("FinSight AI")
-st.subheader("Financial decision assistant for university students")
+st.markdown("""
+<style>
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    .hero {
+        padding: 1.5rem;
+        border-radius: 16px;
+        background: linear-gradient(120deg, #10243A, #176B68);
+        color: white;
+        margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+        color: white;
+        margin-bottom: 0.4rem;
+    }
+    .hero p {
+        color: #E4F3F1;
+        font-size: 1.05rem;
+    }
+    div[data-testid="stMetric"] {
+        border: 1px solid rgba(128,128,128,0.25);
+        padding: 1rem;
+        border-radius: 12px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-st.caption("Plan your spending. Understand your financial risk.")
+st.markdown("""
+<div class="hero">
+    <h1>💰 FinSight AI</h1>
+    <p>Make financial decisions with greater confidence.</p>
+    <p>Risk-aware financial planning for university students in Bangladesh.</p>
+</div>
+""", unsafe_allow_html=True)
 
 # User inputs
 st.sidebar.header("Your Financial Information")

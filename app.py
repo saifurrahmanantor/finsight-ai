@@ -295,6 +295,31 @@ selected_name = {
 }[phone_week]
 
 selected = scenario_results[selected_name]
+st.write("DEBUG — Current Inputs")
+st.write({
+    "Monthly income min": income_min,
+    "Monthly income max": income_max,
+    "Monthly expenses": expenses,
+    "Semester fee": semester_fee,
+    "Selected scenario": selected_name
+})
+
+st.write("DEBUG — Scenario Results")
+
+st.dataframe(
+    pd.DataFrame([
+        {
+            "Scenario": name,
+            "Shortfall Risk (%)": round(
+                result["shortfall_probability"] * 100, 2
+            ),
+            "Average Final Balance": round(
+                result["average_final_balance"], 2
+            )
+        }
+        for name, result in scenario_results.items()
+    ])
+)
 
 # --- Decision Recommendation Engine ---
 

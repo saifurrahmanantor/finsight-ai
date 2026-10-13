@@ -200,6 +200,44 @@ print(
 
 st.dataframe(comparison, use_container_width=True, hide_index=True)
 
+st.markdown("### Model validation")
+
+no_buy_avg = scenario_results["Do not buy"][
+    "average_final_balance"
+]
+buy_now_avg = scenario_results["Buy now (Week 1)"][
+    "average_final_balance"
+]
+buy_later_avg = scenario_results["Buy later (Week 4)"][
+    "average_final_balance"
+]
+
+st.write(
+    "Expected phone-cost difference:",
+    f"৳{phone_cost:,.0f}"
+)
+
+st.write(
+    "Observed buy-now difference:",
+    f"৳{no_buy_avg - buy_now_avg:,.2f}"
+)
+
+st.write(
+    "Observed buy-later difference:",
+    f"৳{no_buy_avg - buy_later_avg:,.2f}"
+)
+
+assert abs(
+    (no_buy_avg - buy_now_avg) - phone_cost
+) < 0.01
+
+assert abs(
+    (no_buy_avg - buy_later_avg) - phone_cost
+) < 0.01
+
+st.success("Both phone-cost validation tests passed.")
+
+
 # Selected scenario
 selected_name = {
     None: "Do not buy",

@@ -182,7 +182,7 @@ for scenario_name, phone_week in purchase_weeks.items():
             path_balances -= semester_fee
 
         if week == phone_week:
-            path_balances -= phone_cost
+            path_balances -= cost
 
         history.append(path_balances.copy())
 

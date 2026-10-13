@@ -13,6 +13,79 @@ st.set_page_config(
 
 st.title("FinSight AI")
 st.subheader("Financial decision assistant for university students")
+
+# Rule-based decision recommendation
+st.markdown("### FinSight AI Recommendation")
+
+fee_week = 6
+
+recommendations = []
+
+for name, result in scenario_results.items():
+    history = result["history"]
+
+    # Balance immediately after the semester fee
+    fee_week_balance = history[:, fee_week - 1]
+
+    # Probability of having enough for the fee
+    # is not recalculated here because the fee is already deducted.
+    # Instead, check the remaining balance after payment.
+    reserve_after_fee = np.mean(
+        fee_week_balance >= minimum_reserve
+    )
+
+    shortfall_risk = result["shortfall_probability"]
+
+    if (
+        shortfall_risk < 0.10
+        and reserve_after_fee >= 0.90
+    ):
+        recommendation = "Lower modeled risk"
+    elif (
+        shortfall_risk < 0.30
+        and reserve_after_fee >= 0.70
+    ):
+        recommendation = "Review carefully"
+    else:
+        recommendation = "High modeled risk"
+
+    recommendations.append({
+        "Decision": name,
+        "Reserve after fee (%)": round(
+            reserve_after_fee * 100, 2
+        ),
+        "Shortfall risk (%)": round(
+            shortfall_risk * 100, 2
+        ),
+        "Assessment": recommendation
+    })
+
+recommendation_table = pd.DataFrame(recommendations)
+
+st.dataframe(
+    recommendation_table,
+    use_container_width=True,
+    hide_index=True
+)
+
+# Select the lowest-risk option that meets the reserve rule
+eligible = recommendation_table[
+    (recommendation_table["Shortfall risk (%)"] < 10)
+    & (recommendation_table["Reserve after fee (%)"] >= 90)
+]
+
+if not eligible.empty:
+    st.success(
+        "At least one scenario meets the current prototype's "
+        "risk and reserve thresholds. Compare its practical "
+        "benefits before deciding."
+    )
+else:
+    st.warning(
+        "No scenario meets both current safety thresholds. "
+        "Consider delaying the purchase or choosing a cheaper phone."
+    )
+
 st.caption("Plan your spending. Understand your financial risk.")
 
 # User inputs
